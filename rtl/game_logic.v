@@ -16,7 +16,8 @@ module game_logic #(
     output wire ram_write_en,
     output wire enable_displays,
     output wire [ADDR_WIDTH-1:0] ram_addr,
-    output reg [DATA_WIDTH-1:0] guessed_number_r
+    output reg [DATA_WIDTH-1:0] guessed_number_r,
+    output reg toggle_1s
 );
 
 // FSM States
@@ -102,8 +103,6 @@ counter #(
     .val(),
     .overflow(one_sec_overflow)
 );
-
-reg toggle_1s;
 
 always @(posedge clk) begin
     if(~rstn) toggle_1s <= 1'b0;

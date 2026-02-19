@@ -25,7 +25,6 @@ module top_tb;
     // Outputs
     wire [3:0] keyboard_rows;
     wire [7:0] selcted_number;
-    wire [7:0] output_number;
 
     // Instantiate the Unit Under Test (UUT)
     top uut (
@@ -34,11 +33,13 @@ module top_tb;
         .keyboard_cols(keyboard_cols), 
         .hack_number(hack_number),
         .load_hack(load_hack),
-        .player_sel(player_sel),
         .next(next),
         .keyboard_rows(keyboard_rows), 
-        .selcted_number(selcted_number), 
-        .output_number(output_number)
+        .hex_selcted_number_1(hex_selcted_number_1),
+        .hex_selcted_number_2(hex_selcted_number_2),
+        .hex_gessed_number_1(hex_gessed_number_1),
+        .hex_gessed_number_2(hex_gessed_number_2),
+        .game_state_leds(game_state_leds)
     );
 
     // Override the counter parameter for faster simulation
@@ -122,8 +123,24 @@ module top_tb;
         end
     endtask
 
-    // Scoreboard
+    // Results & Scoreboard
+    integer total_passes = 0;
+    integer total_fails = 0;
     integer p1_score, p2_score;
+
+    task check_result;
+        input condition;
+        input string msg;
+        begin
+            if (condition) begin
+                $display("  [PASS] %s", msg);
+                total_passes = total_passes + 1;
+            end else begin
+                $display("  [FAIL] %s", msg);
+                total_fails = total_fails + 1;
+            end
+        end
+    endtask
 
     function integer count_set_bits;
         input [7:0] val;
@@ -151,7 +168,6 @@ module top_tb;
         end
     endtask
 
-    // Task: Wait for FSM to reach E1 (idle), with timeout
     task wait_fsm_idle;
         integer timeout;
         begin
@@ -165,40 +181,26 @@ module top_tb;
         end
     endtask
 
-    // Task: Guess a number (set hack, pulse next, wait for FSM)
-    task guess_number;
-        input [7:0] number;
-        input integer idx;
+    task trigger_next;
         begin
-            // Set hack number BEFORE pulsing next
-            hack_number = number;
-            $display("Time=%t | Guessing: %h (Targeting Index %0d)", $time, number, idx);
-            
-            // Wait for FSM to be in E1 (ready for next)
             wait_fsm_idle();
-            
-            // Pulse next - drive AFTER clock edge to avoid race condition with next_edge_r FF
             @(posedge clk);
-            #1; // Small delta-delay: ensures FF samples next=0 on this edge, next=1 on the next
+            #1;
             next = 1;
             @(posedge clk);
             #1;
             next = 0;
-            
-            // Wait for FSM to process (scan memory, find/not find, return to E1)
             wait_fsm_idle();
-            
-            // Display scoreboard
-            update_scoreboard();
         end
     endtask
 
     // Test Stimulus
     reg [7:0] expected_mem [0:15];
-    integer i;
+    integer i, j;
     reg [3:0] d1, d2;
     reg [3:0] r1, r2; 
     reg [2:0] c1, c2;
+    reg found_in_mem;
 
     initial begin
         // Dump waves
@@ -223,8 +225,6 @@ module top_tb;
         $display("==========================================");
         
         // --- 1. Fill Memory ---
-        // P1 (Indices 0-7): 0x01, 0x02, ... 0x08
-        // P2 (Indices 8-15): 0x11, 0x12, ... 0x18
         $display("Phase 1: Populating Memory");
         for(i = 0; i < 16; i = i + 1) begin
             if (i < 8) begin
@@ -234,19 +234,18 @@ module top_tb;
                 d1 = 1;
                 d2 = (i - 8 + 1) % 10;
             end
-            
             expected_mem[i] = {d1, d2};
-            
             get_key_coords(d1, r1, c1);
             get_key_coords(d2, r2, c2);
             input_number(d1, d2, r1, c1, r2, c2);
             #1000;
         end
 
-        // Print memory contents
-        $display("Memory Contents:");
+        // Verify initial memory
+        $display("Verifying Initial Memory Integrity:");
         for(i = 0; i < 16; i = i + 1) begin
-            $display("  Mem[%0d] = %h (expected %h)", i, uut.game_mem_inst.mem[i], expected_mem[i]);
+            check_result(uut.game_mem_inst.mem[i] === expected_mem[i], 
+                $sformatf("Mem[%0d] = %h (Expected)", i, expected_mem[i]));
         end
 
         // --- 2. Start Game ---
@@ -254,52 +253,65 @@ module top_tb;
         get_key_coords(4'hB, r1, c1);
         press_key(r1, c1, 4'hB);
         release_key();
-        
         #1000;
-        if(uut.keyboard_ctrl_inst.start_game) $display("Game Started.");
-        else $error("Error: Game did not start!");
-
+        check_result(uut.keyboard_ctrl_inst.start_game, "Game Start flag asserted");
         update_scoreboard();
 
-        // --- 3. Player 1 Win Scenario ---
-        $display("Phase 3: Simulating Player 1 Win (Hack Mode)");
-        load_hack = 1;
-        
-        // Guess all P1 numbers one by one
-        for(i = 0; i < 8; i = i + 1) begin
-            guess_number(expected_mem[i], i);
-        end
-        
-        // --- 4. Verify Endgame ---
-        $display("Phase 4: Checking Endgame");
-        if (uut.game_logic_inst.endgame) begin
-             $display("BINGO! Player 1 Wins!");
-        end else begin
-             $display("Endgame NOT reached. FSM State: %0d, Game State: %b", 
-                      uut.game_logic_inst.current_state, uut.game_logic_inst.game_state);
-        end
-
-        // --- 5. Final Memory Check ---
-        $display("Phase 5: Final Memory State");
-        for(i = 0; i < 16; i = i + 1) begin
-            if (i < 8) begin
-                // P1 entries should be cleared (deleted)
-                if(uut.game_mem_inst.mem[i] === 8'h00) 
-                    $display("  Mem[%0d]: Cleared (OK)", i);
-                else 
-                    $error("  Mem[%0d]: NOT cleared! Value: %h", i, uut.game_mem_inst.mem[i]);
-            end else begin
-                // P2 entries should be untouched
-                if(uut.game_mem_inst.mem[i] === expected_mem[i]) 
-                    $display("  Mem[%0d]: Intact (OK) Value: %h", i, uut.game_mem_inst.mem[i]);
-                else 
-                    $error("  Mem[%0d]: MODIFIED! Expected: %h, Got: %h", i, expected_mem[i], uut.game_mem_inst.mem[i]);
+        // --- 3. Random Mode Testing ---
+        $display("Phase 3: Random Game Verification (LFSR Mode)");
+        load_hack = 0;
+        i = 0;
+        while (i < 10 && !uut.game_logic_inst.endgame) begin
+            reg [7:0] random_guess;
+            random_guess = uut.prng_number;
+            $display("Turn %0d: PRNG Guessed %h", i, random_guess);
+            
+            // Pulse Next
+            trigger_next();
+            
+            update_scoreboard();
+            
+            if (uut.game_logic_inst.endgame) begin
+                $display("  Natural BINGO occurred during random phase!");
             end
+            i = i + 1;
         end
 
+        // --- 4. Player 1 Win Scenario ---
+        if (!uut.game_logic_inst.endgame) begin
+            $display("Phase 4: Simulating Player 1 Win (Hack Mode)");
+            load_hack = 1;
+            for(i = 0; i < 8; i = i + 1) begin
+                // Only guess if NOT already cleared (P1 indices 0-7)
+                if (uut.game_mem_inst.mem[i] !== 8'h00) begin
+                    hack_number = expected_mem[i];
+                    $display("Guessing %h (Index %0d)", hack_number, i);
+                    trigger_next();
+                    check_result(uut.game_logic_inst.game_state[i] === 1'b1, 
+                        $sformatf("Game state bit %0d set correctly", i));
+                    check_result(uut.game_mem_inst.mem[i] === 8'h00, 
+                        $sformatf("Memory index %0d cleared", i));
+                end else begin
+                    $display("Index %0d already cleared naturally.", i);
+                end
+            end
+            check_result(uut.game_logic_inst.endgame, "Endgame (BINGO) reached for P1");
+        end
+        
+        update_scoreboard();
+
+        // --- 5. Final Summary ---
         #100000;
         $display("==========================================");
-        $display("  Simulation Complete");
+        $display("  VERIFICATION SUMMARY");
+        $display("==========================================");
+        $display("  Total Tests Passed: %0d", total_passes);
+        $display("  Total Tests Failed: %0d", total_fails);
+        if (total_fails == 0) begin
+            $display("  RESULT: ALL TESTS PASSED");
+        end else begin
+            $display("  RESULT: %0d TESTS FAILED", total_fails);
+        end
         $display("==========================================");
         $finish;
     end

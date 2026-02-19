@@ -4,14 +4,17 @@ module top (
     
     input [2:0] keyboard_cols,
     
-    input [7:0] hack_number, // Unused for now
-    input load_hack, // Unused for now
-    input player_sel, // Unused for now
+    input [7:0] hack_number,
+    input load_hack,
     input next,
 
     output [3:0] keyboard_rows,
-    output [7:0] selcted_number, // Unused for now
-    output [7:0] output_number
+    output [7:0] hex_selcted_number_1,
+    output [7:0] hex_selcted_number_2,
+    output [7:0] hex_gessed_number_1,
+    output [7:0] hex_gessed_number_2,
+
+    output [7:0] game_state_leds
 );
 
 // ***********************************
@@ -65,6 +68,7 @@ end
 // ***********************************
 // Game Memory 8 Entries Per Player
 // ***********************************
+wire [7:0] output_number;
 
 game_mem #(
     .ENTRIES(16),
@@ -112,6 +116,7 @@ wire ram_delete;
 wire ram_write_en;
 wire enable_displays;
 wire [15:0] game_state;
+wire toggle_1s;
 
 wire [7:0] guessed_number = load_hack ? hack_number : prng_number;
 
@@ -130,7 +135,16 @@ game_logic #(
     .ram_delete(ram_delete),
     .ram_write_en(ram_write_en),
     .enable_displays(enable_displays),
-    .ram_addr(ram_addr)
+    .ram_addr(ram_addr),
+    .toggle_1s(toggle_1s)
+    
 );
+
+assign game_state_leds = toggle_1s ? game_state[7:0] : game_state[15:8];
+
+
+// ***********************************
+// Visualization Controller
+// ***********************************
 
 endmodule
