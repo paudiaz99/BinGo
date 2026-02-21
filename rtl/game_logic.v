@@ -17,7 +17,8 @@ module game_logic #(
     output wire enable_displays,
     output wire [ADDR_WIDTH-1:0] ram_addr,
     output reg [DATA_WIDTH-1:0] guessed_number_r,
-    output reg toggle_1s
+    output reg toggle_1s,
+    output wire endgame
 );
 
 // FSM States
@@ -36,7 +37,7 @@ reg [3:0] next_state;
 
 wire found = ram_read_number == guessed_number_r;
 
-wire endgame = &game_state[NUM_ENTRIES_PLAYER-1:0] | &game_state[NUM_ENTRIES-1:NUM_ENTRIES_PLAYER];
+assign endgame = &game_state[NUM_ENTRIES_PLAYER-1:0] | &game_state[NUM_ENTRIES-1:NUM_ENTRIES_PLAYER];
 
 always @* begin
     case(current_state)

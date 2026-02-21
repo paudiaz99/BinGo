@@ -6,7 +6,7 @@ module keyboard_ctrl (
     output reg [3:0] keyboard_rows,
     output wire start_game,
     output reg [1:0] num_count,
-    output reg [7:0] cascade_reg
+    output wire [7:0] cascade_reg
 );
     // Matric keyboard row generation
     wire shift_enable = ~new_num & ~start_game;

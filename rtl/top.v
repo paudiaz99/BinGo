@@ -14,7 +14,7 @@ module top (
     output [7:0] hex_gessed_number_1,
     output [7:0] hex_gessed_number_2,
 
-    output [7:0] game_state_leds
+    output [8:0] game_state_leds
 );
 
 // ***********************************
@@ -117,8 +117,13 @@ wire ram_write_en;
 wire enable_displays;
 wire [15:0] game_state;
 wire toggle_1s;
+wire endgame;
 
 wire [7:0] guessed_number = load_hack ? hack_number : prng_number;
+wire [7:0] guessed_number_r;
+
+wire winner_player_1 = &game_state[7:0];
+wire winner_player_2 = &game_state[15:8]; 
 
 game_logic #( 
     .DATA_WIDTH(8),
@@ -130,21 +135,46 @@ game_logic #(
     .start_game(start_game),
     .ram_read_number(output_number),
     .guessed_number(guessed_number),
+    .guessed_number_r(guessed_number_r),
     .next_edge(next_edge),
     .game_state(game_state),
     .ram_delete(ram_delete),
     .ram_write_en(ram_write_en),
     .enable_displays(enable_displays),
     .ram_addr(ram_addr),
-    .toggle_1s(toggle_1s)
+    .toggle_1s(toggle_1s),
+    .endgame(endgame)
     
 );
+reg [7:0] game_state_leds_r;
 
-assign game_state_leds = toggle_1s ? game_state[7:0] : game_state[15:8];
+always @(winner_player_1,winner_player_2,toggle_1s) begin
+    case(1'b1)
+        winner_player_1: game_state_leds_r = game_state[7:0];
+        winner_player_2: game_state_leds_r = game_state[15:8];
+        default: game_state_leds_r = toggle_1s ? game_state[7:0] : game_state[15:8];
+    endcase
+end
 
-
+assign game_state_leds = endgame ? {winner_player_1, game_state_leds_r} : {toggle_1s, game_state_leds_r};
 // ***********************************
 // Visualization Controller
 // ***********************************
+
+wire enable_displays_1 = ~start_game;
+wire enable_displays_2 = start_game;
+
+visualization visualization_inst(
+    .clk(clk),
+    .rstn(rstn),
+    .number_1(cascade_reg),
+    .number_2(guessed_number_r),
+    .enable_displays_1(enable_displays_1),
+    .enable_displays_2(enable_displays_2),
+    .seg_1(hex_selcted_number_1),
+    .seg_2(hex_selcted_number_2),
+    .seg_3(hex_gessed_number_1),
+    .seg_4(hex_gessed_number_2)
+);
 
 endmodule

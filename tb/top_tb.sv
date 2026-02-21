@@ -9,6 +9,8 @@
 `include "rtl/game_mem.v"
 `include "rtl/lfsr_prng.v"
 `include "rtl/game_logic.v"
+`include "rtl/visualization.v"
+`include "rtl/bcd_7_seg.v"
 
 module top_tb;
 
@@ -25,6 +27,11 @@ module top_tb;
     // Outputs
     wire [3:0] keyboard_rows;
     wire [7:0] selcted_number;
+    wire [7:0] hex_selcted_number_1;
+    wire [7:0] hex_selcted_number_2;
+    wire [7:0] hex_gessed_number_1;
+    wire [7:0] hex_gessed_number_2;
+    wire [8:0] game_state_leds;
 
     // Instantiate the Unit Under Test (UUT)
     top uut (
