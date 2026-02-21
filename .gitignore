@@ -1,2 +1,6 @@
 # Simulation Folder
 sim/
+
+# FPGA
+rtl/*.bak
+*.sdc

@@ -4,7 +4,7 @@ module keyboard_ctrl (
     input [2:0] keyboard_cols,
     
     output reg [3:0] keyboard_rows,
-    output wire start_game,
+    output reg start_game,
     output reg [1:0] num_count,
     output wire [7:0] cascade_reg
 );
@@ -37,7 +37,7 @@ module keyboard_ctrl (
     wire enable_counter;
 
     counter #(
-        .COUNT(20)
+        .COUNT(800000)
     )debounce_counter(
         .clk(clk),
         .rstn(reset_counter),
@@ -96,7 +96,9 @@ module keyboard_ctrl (
         .d(cascade_reg[3:0]),
         .q(cascade_reg[7:4])
     );
-
-    assign start_game = (cascade_reg[3:0] == 4'b1011);
+    always @(posedge clk) begin
+        if(~rstn) start_game <= 1'b0;
+        else if(cascade_reg[3:0] == 4'b1011 & ~start_game) start_game <= 1'b1;
+    end
 
 endmodule

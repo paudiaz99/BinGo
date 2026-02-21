@@ -96,7 +96,7 @@ counter #(
 wire one_sec_overflow;
 
 counter #(
-    .COUNT(50) // 100000000 for 1s @ 100MHzç
+    .COUNT(50000000) // 50000000 for 1s @ 50MHz
 )counter_inst(
     .clk(clk),
     .rstn(rstn),

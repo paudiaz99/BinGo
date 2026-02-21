@@ -20,11 +20,23 @@ localparam STATE_3 = STATE_0 << E3;
 reg [3:0] current_state;
 reg [3:0] next_state;
 
+reg p_sync1, p_sync2;
+
+always @(posedge clk) begin
+    if(~rstn) begin
+        p_sync1 <= 1'b0;
+        p_sync2 <= 1'b0;
+    end else begin
+        p_sync1 <= p;
+        p_sync2 <= p_sync1;
+    end
+end
+
 always @* begin
     case(1'b1)
-        current_state[E0]: next_state = p ? STATE_1 : STATE_0;
-        current_state[E1]: next_state = ~p ? STATE_0 : (ms_16 ? STATE_2 : STATE_1);
-        current_state[E2]: next_state = p ? STATE_2 : STATE_3;
+        current_state[E0]: next_state = p_sync2 ? STATE_1 : STATE_0;
+        current_state[E1]: next_state = ~p_sync2 ? STATE_0 : (ms_16 ? STATE_2 : STATE_1);
+        current_state[E2]: next_state = p_sync2 ? STATE_2 : STATE_3;
         current_state[E3]: next_state = ~ms_16 ? STATE_3 : STATE_0;
     endcase
 end
