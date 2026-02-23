@@ -47,11 +47,11 @@ cd your/path/to/BinGo/synth/scripts // Enter the synthesis scripts directory
 After the synthesis is done, you can visualize the synthesized design using the following commands inside the nix shell:
 
 ```bash
-    cd your/path/to/BinGo/synth/scripts
+cd your/path/to/BinGo/synth/scripts
 
-    ./visualization.sh openroad  // Open the design in OpenROAD GUI
-    ./visualization.sh klayout   // Open the design in KLayout GUI
-    ./visualization.sh gds3d     // Open the design in GDS3D
+./visualization.sh openroad  // Open the design in OpenROAD GUI
+./visualization.sh klayout   // Open the design in KLayout GUI
+./visualization.sh gds3d     // Open the design in GDS3D
 ```
 
 > [!NOTE]
@@ -84,6 +84,6 @@ cd your/path/to/BinGo/synth/scripts
 - [x] Verilog Implementation
 - [x] Verification and Simulation
 - [x] FPGA Synthesis and Validation
-- [x] ASIC Implementation using librelane (https://github.com/librelane/librelane)
+- [x] ASIC Implementation using librelane
 - [x] Verification of the ASIC
 
