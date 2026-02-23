@@ -35,14 +35,15 @@ module keyboard_ctrl (
     wire overflow;
     wire reset_counter;
     wire enable_counter;
+    wire [63:0] unconnect_val;
 
     counter #(
-        .COUNT(800000)
+        .COUNT(800000) // 800000 for 16ms @ 50MHz
     )debounce_counter(
         .clk(clk),
         .rstn(reset_counter),
         .enable(enable_counter),
-        .val(), // Unused
+        .val(unconnect_val),
         .overflow(overflow)
     );
 

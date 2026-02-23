@@ -79,6 +79,7 @@ end
 
 // Address Counter
 wire address_overflow = ram_addr == 4'b1111;
+wire unconnect_overflow;
 
 counter #(
     .COUNT(256),
@@ -88,12 +89,13 @@ counter #(
     .rstn(~reset_address_counter),
     .enable(enable_address_counter),
     .val(ram_addr),
-    .overflow()
+    .overflow(unconnect_overflow)
 );
 
 
 // 1s Counter
 wire one_sec_overflow;
+wire [63:0] unconnect_val;
 
 counter #(
     .COUNT(50000000) // 50000000 for 1s @ 50MHz
@@ -101,7 +103,7 @@ counter #(
     .clk(clk),
     .rstn(rstn),
     .enable(enable_one_sec_counter),
-    .val(),
+    .val(unconnect_val),
     .overflow(one_sec_overflow)
 );
 

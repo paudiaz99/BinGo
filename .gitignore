@@ -4,3 +4,6 @@ sim/
 # FPGA
 rtl/*.bak
 *.sdc
+
+# Synthesis
+synth/runs/

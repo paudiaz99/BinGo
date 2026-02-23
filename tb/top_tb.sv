@@ -1,5 +1,6 @@
 `timescale 1ns / 1ps
 
+`ifndef GL_SIM
 `include "rtl/top.v"
 `include "rtl/keyboard_ctrl.v"
 `include "rtl/keyboard_lut.v"
@@ -11,6 +12,7 @@
 `include "rtl/game_logic.v"
 `include "rtl/visualization.v"
 `include "rtl/bcd_7_seg.v"
+`endif
 
 module top_tb;
 
@@ -33,7 +35,7 @@ module top_tb;
     wire [7:0] hex_gessed_number_2;
     wire [8:0] game_state_leds;
 
-    // Instantiate the Unit Under Test (UUT)
+    `ifndef GL_SIM
     top uut (
         .clk(clk), 
         .rstn(rstn), 
@@ -48,12 +50,30 @@ module top_tb;
         .hex_gessed_number_2(hex_gessed_number_2),
         .game_state_leds(game_state_leds)
     );
+    `else
+    wire VPWR = 1'b1;
+    wire VGND = 1'b0;
+    top uut (
+        .clk(clk), 
+        .rstn(rstn),
+        .VPWR(VPWR),
+        .VGND(VGND),
+        .keyboard_cols(keyboard_cols), 
+        .hack_number(hack_number),
+        .load_hack(load_hack),
+        .next(next),
+        .keyboard_rows(keyboard_rows), 
+        .hex_selcted_number_1(hex_selcted_number_1),
+        .hex_selcted_number_2(hex_selcted_number_2),
+        .hex_gessed_number_1(hex_gessed_number_1),
+        .hex_gessed_number_2(hex_gessed_number_2),
+        .game_state_leds(game_state_leds)
+    );
+    `endif
 
-    // Override the counter parameter for faster simulation
     defparam uut.keyboard_ctrl_inst.debounce_counter.COUNT = 20;
-    defparam uut.game_logic_inst.counter_inst.COUNT = 50; 
+    defparam uut.game_logic_inst.counter_inst.COUNT = 50;
 
-    // Keypad Model State
     reg [3:0] pressed_row_mask; 
     reg [2:0] pressed_col_mask; 
 
@@ -69,7 +89,7 @@ module top_tb;
     // Clock generation
     initial begin
         clk = 0;
-        forever #5 clk = ~clk; // 100MHz clock
+        forever #10 clk = ~clk;
     end
 
     // Task to simulate a key press
@@ -163,6 +183,7 @@ module top_tb;
     task update_scoreboard;
         reg [15:0] current_state;
         begin
+`ifndef GL_SIM
             current_state = uut.game_logic_inst.game_state;
             p1_score = count_set_bits(current_state[7:0]);
             p2_score = count_set_bits(current_state[15:8]);
@@ -172,12 +193,18 @@ module top_tb;
             $display("GAME STATE: %b", current_state);
             $display("FSM STATE:  %0d", uut.game_logic_inst.current_state);
             $display("--------------------------------------------------");
+`else
+            $display("--------------------------------------------------");
+            $display("SCOREBOARD: [Gate-Level Simulation - Internal State Hidden]");
+            $display("--------------------------------------------------");
+`endif
         end
     endtask
 
     task wait_fsm_idle;
         integer timeout;
         begin
+`ifndef GL_SIM
             timeout = 0;
             while (uut.game_logic_inst.current_state !== 1 && timeout < 100000) begin
                 @(posedge clk);
@@ -185,6 +212,9 @@ module top_tb;
             end
             if (timeout >= 100000) 
                 $display("WARNING: FSM did not return to E1 within timeout (state=%0d)", uut.game_logic_inst.current_state);
+`else
+            repeat(4000) @(posedge clk);
+`endif
         end
     endtask
 
@@ -209,12 +239,91 @@ module top_tb;
     reg [2:0] c1, c2;
     reg found_in_mem;
 
+`ifdef GL_SIM
+
+    // ==========================================
+    // GLS-Specific Testbench Run
+    // Uses absolute time delays and external IOs
+    // ==========================================
     initial begin
-        // Dump waves
+        $dumpfile("top_gls_tb.vcd");
+        $dumpvars(0, top_tb);
+        
+        force uut.VPWR = 1'b1;
+        force uut.VGND = 1'b0;
+
+        rstn = 0;
+        pressed_row_mask = 0;
+        pressed_col_mask = 0;
+        next = 0;
+        load_hack = 0;
+        hack_number = 0;
+
+        #105;
+        rstn = 1;
+        #100;
+        
+        $display("==========================================");
+        $display("  BINGO - Gate-Level Simulation (GLS)");
+        $display("==========================================");
+        
+        $display("Phase 1: Populating Memory (GLS)");
+        for(i = 0; i < 16; i = i + 1) begin
+            if (i < 8) begin
+                d1 = 0;
+                d2 = (i + 1) % 10;
+            end else begin
+                d1 = 1;
+                d2 = (i - 8 + 1) % 10;
+            end
+            expected_mem[i] = {d1, d2};
+            get_key_coords(d1, r1, c1);
+            get_key_coords(d2, r2, c2);
+            input_number(d1, d2, r1, c1, r2, c2);
+            #1000;
+        end
+
+        $display("Phase 2: Starting Game (GLS)");
+        get_key_coords(4'hB, r1, c1);
+        press_key(r1, c1, 4'hB);
+        release_key();
+        #10000;
+
+        $display("Phase 3: Random Game Verification (LFSR Mode) in GLS");
+        load_hack = 0;
+        for(i = 0; i < 10; i = i + 1) begin
+            $display("Turn %0d: Triggering next random guess", i);
+            trigger_next();
+        end
+
+        $display("Phase 4: Simulating Player 1 Win (Hack Mode) in GLS");
+        load_hack = 1;
+        for(i = 0; i < 8; i = i + 1) begin
+            hack_number = expected_mem[i];
+            $display("Guessing %h (Index %0d)", hack_number, i);
+            trigger_next();
+        end
+        
+        $display("Phase 5: Waiting for BINGO state to stabilize");
+        #200000;
+
+        $display("==========================================");
+        $display("  GLS VERIFICATION FINISHED");
+        $display("  (Check top_tb.vcd in gtkwave for signals)");
+        $display("==========================================");
+        $finish;
+    end
+
+`else
+
+    // ==========================================
+    // RTL Golden Testbench Run
+    // Uses internal probes for quick validation
+    // ==========================================
+    initial begin
         $dumpfile("top_tb.vcd");
         $dumpvars(0, top_tb);
 
-        // Initialize Inputs
         rstn = 0;
         pressed_row_mask = 0;
         pressed_col_mask = 0;
@@ -223,12 +332,12 @@ module top_tb;
         hack_number = 0;
 
         // Reset
-        #100;
+        #105;
         rstn = 1;
         #100;
         
         $display("==========================================");
-        $display("  BINGO - Full Game Verification");
+        $display("  BINGO - Full Game Verification (RTL)");
         $display("==========================================");
         
         // --- 1. Fill Memory ---
@@ -248,7 +357,6 @@ module top_tb;
             #1000;
         end
 
-        // Verify initial memory
         $display("Verifying Initial Memory Integrity:");
         for(i = 0; i < 16; i = i + 1) begin
             check_result(uut.game_mem_inst.mem[i] === expected_mem[i], 
@@ -322,5 +430,7 @@ module top_tb;
         $display("==========================================");
         $finish;
     end
+
+`endif
 
 endmodule

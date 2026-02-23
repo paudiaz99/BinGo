@@ -1,0 +1,18 @@
+{
+    "DESIGN_NAME": "top",
+    "VERILOG_FILES": [
+        "dir::../rtl/top.v",
+        "dir::../rtl/keyboard_ctrl.v",
+        "dir::../rtl/keyboard_lut.v",
+        "dir::../rtl/game_logic.v",
+        "dir::../rtl/visualization.v",
+        "dir::../rtl/lfsr_prng.v",
+        "dir::../rtl/counter.v",
+        "dir::../rtl/bcd_7_seg.v",
+        "dir::../rtl/game_mem.v",
+        "dir::../rtl/debouncer.v",
+        "dir::../rtl/reg4Bit.v"
+    ],
+    "CLOCK_PERIOD": 20,
+    "CLOCK_PORT": "clk"
+}
