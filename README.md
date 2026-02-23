@@ -30,7 +30,7 @@ In order to interact with the game, players will also need:
 
 ## Synthesis
 
-Althought the synthesized RTL netlist and the final GDS are already available inside synth directory, I encourage you to perform the synthesis yourself following these steps:
+The BinGo ASIC was synthesized using librelane, and skywater130 pdk. Althought the synthesized RTL netlist and the final GDS are already available inside synth directory, I encourage you to perform the synthesis yourself following these steps:
 
 ```bash
 cd your/path/to/librelane // Ensure that you already have librelane installed!
