@@ -1,6 +1,6 @@
 # BinGo
 
-BinGo is a digital bingo game designed and synthesized using open source tools. The game was originally implemented in 74LS logic gate series as a university project. The goal of this project is to build the same system, but at the microelectronic level. Achieving a reduction in size of almost x500000.
+BinGo is a digital bingo game designed and synthesized using open source tools. The game was originally implemented in 74LS logic gate series as a university project. The goal of this project is to build the same system, but at the microelectronic level. Achieving a reduction in size of almost x300000 and running at 50MHz.
 
 <div align="center">
   <img src="https://github.com/user-attachments/assets/d8554dc3-b70a-4271-967f-ca9dc06e7137" alt="centered image">
